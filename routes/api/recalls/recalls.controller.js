@@ -1,34 +1,35 @@
+'use strict';
 
 var express = require('express');
 var router = express.Router();
 const httpService = require('@shared/services/http.service');
 const { host, port } = require('@config').actionsService;
+const languages = require('./languages');
 
 
 
-async function executePromises(promises, data, isArray = false, companies = undefined) {
+async function executePromises(promises, data, isArray = false) {
   let dataPromise;
   let ret = promises.length;
   if (!isArray)
     dataPromise = await Promise.all(promises);
-  else
-    try {
-      dataPromise = [];
-      for (let i = 0; i < promises.length; i++) {
-        //let data3 = await Promise.all([promises[i]]).catch();
-        await promises[i].then(data3 => {
-          data3.provider = companies[i];
-          dataPromise.push(data3);
-        }
-        ).catch(error => console.log(error.message));
-        console.log('exito');
-      }
-    } catch {
-      console.log('error');
-    }
+  else {
+    dataPromise = [];
+    await Promise.allSettled(promises)
+      .then(results => {
+        results.forEach((result) => {
+          if (result.status == 'fulfilled') {
+            dataPromise.push(result.value);
+            console.log('Success');
+          }
+          else if (result.status == 'rejected') {
+            console.log('Error in promise: ', result.reason.toString());
+          }
+        });
+      });
+  }
 
   if (!isArray)
-    //dataPromise.forEach((element) => { data.push(element.data.result); });
     dataPromise.forEach((element) => { data.push(element.data.message); });
   else {
     dataPromise.forEach((element) => {
@@ -39,23 +40,81 @@ async function executePromises(promises, data, isArray = false, companies = unde
               element.data.message.results.bindings.forEach((subElement) => {
                 let data2 = {};
                 data2.agid = subElement.g.value.toString().substring(6);
-                data2.provider = element.provider;
                 data.push(data2);
               });
     });
-    companies.splice(0, companies.length);
   }
   promises.splice(0, promises.length);
   return ret;
 }
 
+function parseLanguages(services) {
+  services.map(service => {
+    service.language = service.language.map(lan => {
+      const parsedLanguage = languages.getRArray().filter(language => language.Id == lan);
+      if (parsedLanguage != undefined && parsedLanguage.length > 0)
+        lan = parsedLanguage[0].Print_Name;
+      return lan;
+    }
+    );
+  });
+}
+
+function arraysToArrays(services) {
+  services.forEach(service => {
+    if (service.serviceName === undefined)
+      service.serviceName = [''];
+    if (typeof service.serviceName === 'string' || service.serviceName instanceof String)
+      service.serviceName = [service.serviceName];
+
+    if (service.serviceDescription === undefined)
+      service.serviceDescription = [''];
+    if (typeof service.serviceDescription === 'string' || service.serviceDescription instanceof String)
+      service.serviceDescription = [service.serviceDescription];
+
+    if (service.currentStatus === undefined)
+      service.currentStatus = [''];
+    if (typeof service.currentStatus === 'string' || service.currentStatus instanceof String)
+      service.currentStatus = [service.currentStatus];
+
+    if (service.hasDomain === undefined)
+      service.hasDomain = [''];
+    if (typeof service.hasDomain === 'string' || service.hasDomain instanceof String)
+      service.hasDomain = [service.hasDomain];
+
+    if (service.hasSubDomain === undefined)
+      service.hasSubDomain = [''];
+    if (typeof service.hasSubDomain === 'string' || service.hasSubDomain instanceof String)
+      service.hasSubDomain = [service.hasSubDomain];
+
+    if (service.hasFuncionality === undefined)
+      service.hasFuncionality = [''];
+    if (typeof service.hasFuncionality === 'string' || service.hasFuncionality instanceof String)
+      service.hasFuncionality = [service.hasFuncionality];
+
+    if (service.hasRequirement === undefined)
+      service.hasRequirement = [''];
+    if (typeof service.hasRequirement === 'string' || service.hasRequirement instanceof String)
+      service.hasRequirement = [service.hasRequirement];
+
+    if (service.serviceFree === undefined)
+      service.serviceFree = [false];
+    if (typeof service.serviceFree === 'boolean' || service.serviceFree instanceof Boolean)
+      service.serviceFree = [service.serviceFree];
+
+    if (service.language === undefined)
+      service.language = [''];
+    if (typeof service.language === 'string' || service.language instanceof String)
+      service.language = [service.language];
+
+  });
+}
+
 class CallsService {
 
   constructor() {
-    //super(...args);
     this.http = httpService;
     this.url = `http://${host}:${port}`;
-
     this.router = router;
     this.router.use(function timeLog(req, res, next) {
       console.log('Time: ', Date.now());
@@ -79,7 +138,6 @@ class CallsService {
         }
         totalCalls += await executePromises(promises, nodesIds);
         console.log('nodes: ', nodesIds);
-        let companies = [];
         for (let i = 0; i < nodesIds.length; i++) {
           for (let i2 = 0; i2 < nodesIds[i].length; i2++) {
             let body = 'PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>' +
@@ -90,14 +148,13 @@ class CallsService {
               '}} '; // the body may change
             const config = { headers: { 'Content-Type': 'text/plain' } };
             let id = nodesIds[i][i2].agid;
-            companies.push(nodesIds[i][i2].company);
             promises.push(httpService.post(`http://${host}:${port}/api/discovery/remote/semantic/${id}`, body, config));
             if (promises.length >= callsAtSameTime) {
-              totalCalls += await executePromises(promises, services, true, companies);
+              totalCalls += await executePromises(promises, services, true);
             }
           }
         }
-        totalCalls += await executePromises(promises, services, true, companies);
+        totalCalls += await executePromises(promises, services, true);
         services = services.filter((item, index, self) => {
           return self.indexOf(self.find(e => e.agid == item.agid)) == index;
         });
@@ -108,12 +165,15 @@ class CallsService {
           if (promises.length >= callsAtSameTime) {
             totalCalls += await executePromises(promises, servicesAll);
           }
-
         }
         totalCalls += await executePromises(promises, servicesAll);
-        for (let i = 0; i < servicesAll.length; i++)
-          servicesAll[i].provider = services[i].provider;
+        arraysToArrays(servicesAll);
+        parseLanguages(servicesAll);
+        for (let i = 0; i < servicesAll.length; i++) {
+//          console.log(servicesAll[i]);
+        }
         console.log('Llamadas realizadas en total: ', totalCalls);
+        //console.log('Enviado al front en ultimo servicio: ', servicesAll[servicesAll.length - 1]);
         res.send({ result: servicesAll });
       }
       catch (e) {
