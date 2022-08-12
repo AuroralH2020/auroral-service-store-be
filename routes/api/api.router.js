@@ -8,6 +8,8 @@ const { isMultitenantEnabled, adminFolder } = require('@config');
 const tenantsController = isMultitenantEnabled ? require(`.${adminFolder}/tenants/tenants.controller`) : undefined;
 const usersController = require(`.${adminFolder}/users/users.controller`);
 const recallsController = require(`.${adminFolder}/recalls/recalls.controller`);
+const resetServices = require('./recalls/reset-services');
+const { preloadData } = require('../../config');
 
 const routerConfig = {
   // middlewares: [ fooMiddleware, bazMiddleware ],
@@ -21,7 +23,10 @@ const routerConfig = {
 // Register tenants controller in first position, if multitenant enabled
 if (isMultitenantEnabled) routerConfig.controllers.unshift(tenantsController);
 
+if(preloadData)
+  resetServices.resetServices();
+
 const router = createRouter(routerConfig);
-router.use('',recallsController.router);
+router.use('',recallsController.router); 
 
 module.exports = router;

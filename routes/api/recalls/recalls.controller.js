@@ -8,26 +8,24 @@ const languages = require('./languages');
 
 
 
+
 async function executePromises(promises, data, isArray = false) {
   let dataPromise;
   let ret = promises.length;
-  if (!isArray)
-    dataPromise = await Promise.all(promises);
-  else {
-    dataPromise = [];
-    await Promise.allSettled(promises)
-      .then(results => {
-        results.forEach((result) => {
-          if (result.status == 'fulfilled') {
-            dataPromise.push(result.value);
-            console.log('Success');
-          }
-          else if (result.status == 'rejected') {
-            console.log('Error in promise: ', result.reason.toString());
-          }
-        });
+  dataPromise = [];
+  await Promise.allSettled(promises)
+    .then(results => {
+      results.forEach((result) => {
+        if (result.status == 'fulfilled') {
+          dataPromise.push(result.value);
+          console.log('Success');
+        }
+        else if (result.status == 'rejected') {
+          console.log('Error in promise: ', result.reason.toString());
+        }
       });
-  }
+    });
+
 
   if (!isArray)
     dataPromise.forEach((element) => { data.push(element.data.message); });
@@ -169,8 +167,8 @@ class CallsService {
         totalCalls += await executePromises(promises, servicesAll);
         arraysToArrays(servicesAll);
         parseLanguages(servicesAll);
-        for (let i = 0; i < servicesAll.length; i++) {
-//          console.log(servicesAll[i]);
+        for (let i = 0; i < 1 && i < servicesAll.length; i++) {
+          console.log(servicesAll[i]);
         }
         console.log('Llamadas realizadas en total: ', totalCalls);
         //console.log('Enviado al front en ultimo servicio: ', servicesAll[servicesAll.length - 1]);
