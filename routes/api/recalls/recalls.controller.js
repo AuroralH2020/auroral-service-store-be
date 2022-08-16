@@ -16,7 +16,13 @@ async function executePromises(promises, data, isArray = false) {
   await Promise.allSettled(promises)
     .then(results => {
       results.forEach((result) => {
+        let parameter = '';
         if (result.status == 'fulfilled') {
+          let index = result.value.config.url.lastIndexOf('/');
+          parameter = result.value.config.url.substring(index + 1);
+
+          if (parameter != '')
+            result.value.data.message.parameter = parameter;
           dataPromise.push(result.value);
           console.log('Success');
         }
@@ -38,6 +44,7 @@ async function executePromises(promises, data, isArray = false) {
               element.data.message.results.bindings.forEach((subElement) => {
                 let data2 = {};
                 data2.agid = subElement.g.value.toString().substring(6);
+                data2.parameter = element.data.message.parameter;
                 data.push(data2);
               });
     });
@@ -108,6 +115,51 @@ function arraysToArrays(services) {
   });
 }
 
+function insert_nodes(allData, nodesIds) {
+  allData.forEach(data => {
+    data.nodes = [];
+    let find = false;
+    for (let i = 0; i < nodesIds.length && !find; i++) {
+      if (data.commId == nodesIds[i].parameter) {
+        delete nodesIds[i].parameter;
+        find = true;
+        data.nodes = nodesIds[i];
+      }
+    }
+  });
+}
+
+function insert_services(allData, services) {
+  allData.forEach(data => {
+    for (let iData = 0; iData < data.nodes.length; iData++) {
+      data.nodes[iData].services = [];
+      for (let iServices = 0; iServices < services.length; iServices++) {
+        if (services[iServices].parameter == data.nodes[iData].agid) {
+          data.nodes[iData].services.push(services[iServices]);
+        }
+      }
+    }
+  });
+}
+
+function insert_all_in_services(allData, allServices) {
+  allServices.forEach(service => {
+    let find = false;
+    for (let i = 0; i < allData.length && !find; i++) {
+      for (let i2 = 0; i2 < allData[i].nodes.length && !find; i2++) {
+        for (let i3 = 0; i3 < allData[i].nodes[i2].services.length && !find; i3++) {
+          if (allData[i].nodes[i2].services[i3].agid == service.id) {
+            find = true;
+            service.community = { description: allData[i].description, name: allData[i].name, commId: allData[i].commId };
+            service.node = { company: allData[i].nodes[i2].company, cid: allData[i].nodes[i2].cid, agid: allData[i].nodes[i2].agid };
+          }
+        }
+      }
+    }
+  });
+}
+
+
 class CallsService {
 
   constructor() {
@@ -119,12 +171,15 @@ class CallsService {
       next();
     });
 
+
     this.router.get('/services', async function (req, res) {
       try {
         let services = [], communitiesIds = [], nodesIds = [], promises = [];
+        let allData = [];
         const callsAtSameTime = 100;
         let totalCalls = 1;
         communitiesIds = await httpService.get(`http://${host}:${port}/api/collaboration/communities`);
+        allData = communitiesIds.data.message;
         //communitiesIds = communitiesIds.data.result; // this may vary
         communitiesIds = communitiesIds.data.message;
         for (let i = 0; i < communitiesIds.length; i++) {
@@ -135,7 +190,8 @@ class CallsService {
           }
         }
         totalCalls += await executePromises(promises, nodesIds);
-        console.log('nodes: ', nodesIds);
+        insert_nodes(allData, nodesIds);
+        console.log('nodes', allData);
         for (let i = 0; i < nodesIds.length; i++) {
           for (let i2 = 0; i2 < nodesIds[i].length; i2++) {
             let body = 'PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>' +
@@ -156,6 +212,7 @@ class CallsService {
         services = services.filter((item, index, self) => {
           return self.indexOf(self.find(e => e.agid == item.agid)) == index;
         });
+        insert_services(allData, services);
         let servicesAll = [];
         for (let i = 0; i < services.length; i++) {
           let id = services[i].agid;
@@ -167,11 +224,11 @@ class CallsService {
         totalCalls += await executePromises(promises, servicesAll);
         arraysToArrays(servicesAll);
         parseLanguages(servicesAll);
+        insert_all_in_services(allData, servicesAll);
         for (let i = 0; i < 1 && i < servicesAll.length; i++) {
           console.log(servicesAll[i]);
         }
         console.log('Llamadas realizadas en total: ', totalCalls);
-        //console.log('Enviado al front en ultimo servicio: ', servicesAll[servicesAll.length - 1]);
         res.send({ result: servicesAll });
       }
       catch (e) {
