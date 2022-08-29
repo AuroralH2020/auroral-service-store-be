@@ -27,6 +27,8 @@ class ResetServices {
   randomService(i) {
     let counter = 0;
     this.item.td.adapterId = this.adapterId + i.toString();
+    this.item.td.title = this.title + i.toString();
+    this.item.td.name = this.name + i.toString();
     this.item.td.serviceName = this.names[Math.floor(Math.random() * this.names.length)];
 
     this.item.td.serviceDescription = [];
@@ -115,7 +117,7 @@ class ResetServices {
       }
       catch (err) {
         fails++;
-        console.log('Fail on reset services: ', err.response.data.message);
+        console.log('Fail on reset services: ', err.response.data.message, this.item);
       }
     }
     console.log('Number of services created: ', i);
@@ -138,7 +140,7 @@ class ResetServices {
     this.item = {
       'td': {
         '@context': 'https://www.w3.org/2019/wot/td/v1',
-        'title': 'Monitor Service11',
+        'title': 'Monitor Service',
         '@type': 'Service',
         'securityDefinitions': {
           'nosec_sc': {
@@ -154,7 +156,7 @@ class ResetServices {
         },
         'actions': {},
         'events': {},
-        'adapterId': 'node-red-consumedr1959ydfdfafadaadddygaada',
+        'adapterId': 'node-red-consume',
         'oid': 'b0c2d27a-e3a1-45e2-89f2-901d3d78g26bc',
 
 
@@ -172,12 +174,13 @@ class ResetServices {
         'language': ['spa', 'eng'],
         'applicableGeographicalArea': 'Spain',
         'numberOfDownloads': 129,
-        'versionOfService': '1.4'
-
+        'versionOfService': '1.4',
+        'name':'nameOfService'
       },
       'avatar': 'nostrud sunt'
     };
     this.adapterId = this.item.td.adapterId;
+    this.title = this.item.td.title;
     this.name = this.item.td.name;
 
 

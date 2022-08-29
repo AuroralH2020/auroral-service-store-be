@@ -8,7 +8,6 @@ const languages = require('./languages');
 
 
 
-
 async function executePromises(promises, data, isArray = false) {
   let dataPromise;
   let ret = promises.length;
@@ -27,7 +26,7 @@ async function executePromises(promises, data, isArray = false) {
           console.log('Success');
         }
         else if (result.status == 'rejected') {
-          console.log('Error in promise: ', result.reason.toString());
+          console.log('Error in promise: ', result.reason.toString(),' path:',result.reason.request.path);
         }
       });
     });
@@ -192,6 +191,12 @@ class CallsService {
         totalCalls += await executePromises(promises, nodesIds);
         insert_nodes(allData, nodesIds);
         console.log('nodes', allData);
+        console.log('List of nodes:');
+        allData.forEach(data => {
+          data.nodes.forEach(node => {
+            console.log(node);
+          });
+        });
         for (let i = 0; i < nodesIds.length; i++) {
           for (let i2 = 0; i2 < nodesIds[i].length; i2++) {
             let body = 'PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>' +
