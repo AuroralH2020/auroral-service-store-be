@@ -6,12 +6,9 @@ const httpService = require('@shared/services/http.service');
 const { host, port } = require('@config').actionsService;
 const languages = require('./languages');
 
-
-
-async function executePromises(promises, data, isArray = false) {
-  let dataPromise;
+async function executePromises(promises, data, isIdService = false, isDataService = false) {
+  let dataPromise = [];
   let ret = promises.length;
-  dataPromise = [];
   await Promise.allSettled(promises)
     .then(results => {
       results.forEach((result) => {
@@ -19,33 +16,65 @@ async function executePromises(promises, data, isArray = false) {
         if (result.status == 'fulfilled') {
           let index = result.value.config.url.lastIndexOf('/');
           parameter = result.value.config.url.substring(index + 1);
-
           if (parameter != '')
             result.value.data.message.parameter = parameter;
           dataPromise.push(result.value);
           console.log('Success');
         }
         else if (result.status == 'rejected') {
-          console.log('Error in promise: ', result.reason.toString(),' path:',result.reason.request.path);
+          console.log('Error in promise: ', result.reason.toString(), ' path:', result.reason.request.path);
         }
       });
     });
-
-
-  if (!isArray)
+  if (!isIdService && !isDataService)
     dataPromise.forEach((element) => { data.push(element.data.message); });
-  else {
+  else if (!isDataService) {
+    dataPromise.forEach((element) => {
+      if (element.data != undefined)
+        if (element.data.message != undefined && element.data.message.parameter != undefined)
+          if (element.data.message.results != undefined)
+            if (element.data.message.results.bindings != undefined)
+              element.data.message.results.bindings.forEach((subElement) => {
+                if (subElement.g != undefined && subElement.g.value != undefined && subElement.g.value.length>7) {
+                  let data2 = {};
+                  data2.agid = subElement.g.value.toString().substring(6);
+                  data2.parameter = element.data.message.parameter;
+                  data.push(data2);
+                }
+              });
+    });
+  }
+  else if (isDataService) {
+    const namesKeysArrays = ['serviceName', 'serviceDescription', 'currentStatus', 'hasDomain',
+      'hasSubDomain', 'hasFuncionality', 'hasRequirement', 'serviceFree', 'language'];
+    const namesKeys = ['provider', 'dateLastUpdate', 'hasURL', 'applicableGeographicalArea',
+      'numberOfDownloads', 'versionOfService'];
     dataPromise.forEach((element) => {
       if (element.data != undefined)
         if (element.data.message != undefined)
           if (element.data.message.results != undefined)
-            if (element.data.message.results.bindings != undefined)
+            if (element.data.message.results.bindings != undefined) {
+              let data2 = {};
               element.data.message.results.bindings.forEach((subElement) => {
-                let data2 = {};
-                data2.agid = subElement.g.value.toString().substring(6);
-                data2.parameter = element.data.message.parameter;
-                data.push(data2);
+                if (subElement.pred != undefined && subElement.pred.value != undefined) {
+                  let index = subElement.pred.value.indexOf('#');
+                  if (index >= 0 && subElement.obj != undefined && subElement.obj.value) {
+                    let key = subElement.pred.value.substring(index + 1);
+                    if (namesKeysArrays.includes(key)) {
+                      if (data2[key] == undefined)
+                        data2[key] = [subElement.obj.value];
+                      else
+                        data2[key].push(subElement.obj.value);
+                    }
+                    else if (namesKeys.includes(key)) {
+                      data2[key] = subElement.obj.value;
+                    }
+                  }
+                }
               });
+              if (data != {})
+                data.push(data2);
+            }
     });
   }
   promises.splice(0, promises.length);
@@ -114,7 +143,7 @@ function arraysToArrays(services) {
   });
 }
 
-function insert_nodes(allData, nodesIds) {
+function insert_nodes_data(allData, nodesIds) {
   allData.forEach(data => {
     data.nodes = [];
     let find = false;
@@ -128,7 +157,7 @@ function insert_nodes(allData, nodesIds) {
   });
 }
 
-function insert_services(allData, services) {
+function insert_services_data(allData, services) {
   allData.forEach(data => {
     for (let iData = 0; iData < data.nodes.length; iData++) {
       data.nodes[iData].services = [];
@@ -141,7 +170,7 @@ function insert_services(allData, services) {
   });
 }
 
-function insert_all_in_services(allData, allServices) {
+function insert_all_in_services_data(allData, allServices) {
   allServices.forEach(service => {
     let find = false;
     for (let i = 0; i < allData.length && !find; i++) {
@@ -158,6 +187,104 @@ function insert_all_in_services(allData, allServices) {
   });
 }
 
+async function insert_communities_nodes(allData, nodesIds, callsAtSameTime) {
+  let communitiesIds = [], promises = [], totalCalls = 0;
+  communitiesIds = await httpService.get(`http://${host}:${port}/api/collaboration/communities`);
+  communitiesIds.data.message.forEach(community => {
+    allData.push(community);
+  });
+  //allData = communitiesIds.data.message;
+  //communitiesIds = communitiesIds.data.result; // this may vary
+  communitiesIds = communitiesIds.data.message;
+  for (let i = 0; i < communitiesIds.length; i++) {
+    let id = communitiesIds[i].commId;
+    promises.push(httpService.get(`http://${host}:${port}/api/discovery/nodes/community/${id}`));
+    if (promises.length >= callsAtSameTime) {
+      totalCalls += await executePromises(promises, nodesIds);
+    }
+  }
+  totalCalls += await executePromises(promises, nodesIds);
+  insert_nodes_data(allData, nodesIds);
+  console.log('nodes', allData);
+  console.log('List of nodes:');
+  allData.forEach(data => {
+    data.nodes.forEach(node => {
+      console.log(node);
+    });
+  });
+  return totalCalls;
+}
+
+async function insert_services_ids(nodesIds, allData, services, callsAtSameTime) {
+  let totalCalls = 0, promises = [];
+  for (let i = 0; i < nodesIds.length; i++) {
+    for (let i2 = 0; i2 < nodesIds[i].length; i2++) {
+      const body = 'PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>' +
+        ' PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> ' +
+        ' SELECT * WHERE { ' +
+        ' GRAPH $g { ' +
+        ' ?sub <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <https://www.w3.org/2019/wot/td#Service> . ' +
+        '}} '; // the body may change
+      const config = { headers: { 'Content-Type': 'text/plain' }, timeout: 3000 };
+      let id = nodesIds[i][i2].agid;
+      promises.push(httpService.post(`http://${host}:${port}/api/discovery/remote/semantic/${id}`, body, config));
+      if (promises.length >= callsAtSameTime) {
+        totalCalls += await executePromises(promises, services, true);
+      }
+    }
+  }
+  totalCalls += await executePromises(promises, services, true);
+  services = services.filter((item, index, self) => {
+    return self.indexOf(self.find(e => e.agid == item.agid)) == index;
+  });
+  insert_services_data(allData, services);
+  return totalCalls;
+}
+
+async function insert_services_sparql(servicesAll, services, callsAtSameTime) {
+  let promises = [], totalCalls = 0;
+  let OIDs = await httpService.get(`http://${host}:${port}/api/registration`);
+  let idMyNode = ''; // necesitamos una forma mejor de sacar la id del nodo
+  for (let i = 0; i < services.length; i++) {
+    if (OIDs.data.message.includes(services[i].agid)) {
+      idMyNode = services[i].parameter;
+    }
+  }
+  for (let i = 0; i < services.length; i++) {
+    let id = services[i].agid;
+    const body = 'PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>' +
+      'PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> ' +
+      'SELECT * WHERE { GRAPH $g { ?sub ?pred ?obj . ' +
+      '} FILTER ( $g IN (<graph:' + id + '> ))}'; // the body may change
+    const config = { headers: { 'Content-Type': 'text/plain' } };
+    if (services[i].parameter != idMyNode || OIDs.data.message.includes(id)) {
+      // only services out of the node an in the node AND VALID
+      id = services[i].parameter;
+      promises.push(httpService.post(`http://${host}:${port}/api/discovery/remote/semantic/${id}`, body, config));
+    }
+    if (promises.length >= callsAtSameTime) {
+      totalCalls += await executePromises(promises, servicesAll, false, true);
+    }
+  }
+  totalCalls += await executePromises(promises, servicesAll, false, true);
+  return totalCalls;
+}
+/*
+async function insert_services(servicesAll, services, callsAtSameTime) {
+  let promises = [], totalCalls = 0;
+  for (let i = 0; i < services.length; i++) {
+    let id = services[i].agid;
+    let id2 = '87c00849-2452-48ec-aa98-c3a62e3556d8';
+    //id2 = 'ad813ae2-3c04-4639-9cdd-34cb1557b9b9';
+    promises.push(httpService.get(`http://${host}:${port}/api/discovery/remote/td/${id}/${id2}`));
+    if (promises.length >= callsAtSameTime) {
+      totalCalls += await executePromises(promises, servicesAll);
+    }
+  }
+  totalCalls += await executePromises(promises, servicesAll);
+  return totalCalls;
+}
+*/
 
 class CallsService {
 
@@ -165,74 +292,37 @@ class CallsService {
     this.http = httpService;
     this.url = `http://${host}:${port}`;
     this.router = router;
+    this.callsAtSameTime = 100;
     this.router.use(function timeLog(req, res, next) {
       console.log('Time: ', Date.now());
       next();
     });
 
-
     this.router.get('/services', async function (req, res) {
       try {
-        let services = [], communitiesIds = [], nodesIds = [], promises = [];
-        let allData = [];
+        let services = [], nodesIds = [];
+        let allData = [], servicesAll = [];;
         const callsAtSameTime = 100;
         let totalCalls = 1;
-        communitiesIds = await httpService.get(`http://${host}:${port}/api/collaboration/communities`);
-        allData = communitiesIds.data.message;
-        //communitiesIds = communitiesIds.data.result; // this may vary
-        communitiesIds = communitiesIds.data.message;
-        for (let i = 0; i < communitiesIds.length; i++) {
-          let id = communitiesIds[i].commId;
-          promises.push(httpService.get(`http://${host}:${port}/api/discovery/nodes/community/${id}`));
-          if (promises.length >= callsAtSameTime) {
-            totalCalls += await executePromises(promises, nodesIds);
-          }
+        totalCalls += await insert_communities_nodes(allData, nodesIds, callsAtSameTime);
+        totalCalls += await insert_services_ids(nodesIds, allData, services, callsAtSameTime);
+        totalCalls += await insert_services_sparql(servicesAll, services, callsAtSameTime);
+        arraysToArrays(servicesAll); // parse data
+        parseLanguages(servicesAll); // parse data language
+        insert_all_in_services_data(allData, servicesAll); // parse data
+        for (let i = 0; i < 1 && i < servicesAll.length; i++) {
+          console.log('servicio',servicesAll[i]);
         }
-        totalCalls += await executePromises(promises, nodesIds);
-        insert_nodes(allData, nodesIds);
-        console.log('nodes', allData);
-        console.log('List of nodes:');
-        allData.forEach(data => {
-          data.nodes.forEach(node => {
-            console.log(node);
+        allData.forEach(community => {
+          console.log(community);
+          let counter =0;
+          community.nodes.forEach(node => {
+            if (counter<10){
+              console.log('Node: ', node);
+              counter++;
+            }
           });
         });
-        for (let i = 0; i < nodesIds.length; i++) {
-          for (let i2 = 0; i2 < nodesIds[i].length; i2++) {
-            let body = 'PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>' +
-              ' PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> ' +
-              ' SELECT * WHERE { ' +
-              ' GRAPH $g { ' +
-              ' ?sub <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <https://www.w3.org/2019/wot/td#Service> . ' +
-              '}} '; // the body may change
-            const config = { headers: { 'Content-Type': 'text/plain' } };
-            let id = nodesIds[i][i2].agid;
-            promises.push(httpService.post(`http://${host}:${port}/api/discovery/remote/semantic/${id}`, body, config));
-            if (promises.length >= callsAtSameTime) {
-              totalCalls += await executePromises(promises, services, true);
-            }
-          }
-        }
-        totalCalls += await executePromises(promises, services, true);
-        services = services.filter((item, index, self) => {
-          return self.indexOf(self.find(e => e.agid == item.agid)) == index;
-        });
-        insert_services(allData, services);
-        let servicesAll = [];
-        for (let i = 0; i < services.length; i++) {
-          let id = services[i].agid;
-          promises.push(httpService.get(`http://${host}:${port}/api/discovery/remote/td/${id}/${id}`));
-          if (promises.length >= callsAtSameTime) {
-            totalCalls += await executePromises(promises, servicesAll);
-          }
-        }
-        totalCalls += await executePromises(promises, servicesAll);
-        arraysToArrays(servicesAll);
-        parseLanguages(servicesAll);
-        insert_all_in_services(allData, servicesAll);
-        for (let i = 0; i < 1 && i < servicesAll.length; i++) {
-          console.log(servicesAll[i]);
-        }
         console.log('Llamadas realizadas en total: ', totalCalls);
         res.send({ result: servicesAll });
       }

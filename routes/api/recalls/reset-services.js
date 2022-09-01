@@ -26,9 +26,13 @@ class ResetServices {
 
   randomService(i) {
     let counter = 0;
-    this.item.td.adapterId = this.adapterId + i.toString();
-    this.item.td.title = this.title + i.toString();
-    this.item.td.name = this.name + i.toString();
+    let salt = (Math.random() + 1).toString(36).substring(9).toString();
+    for (let i = 0; i < (Math.random() * 20 + 1); i++)
+      salt += (Math.random() + 1).toString(36).substring(9).toString();
+    this.item.td.adapterId = this.adapterId + i.toString() + '--' + salt;
+    this.item.td.title = this.title + i.toString() + salt;
+    this.item.td.name = this.name + i.toString() + salt;
+
     this.item.td.serviceName = this.names[Math.floor(Math.random() * this.names.length)];
 
     this.item.td.serviceDescription = [];
@@ -38,6 +42,8 @@ class ResetServices {
     for (i = 0; i < counter; i++)
       this.item.td.serviceDescription.push(this.descriptions[Math.floor(Math.random() * this.descriptions.length)]);
     this.item.td.provider = this.providers[Math.floor(Math.random() * this.providers.length)];
+
+
 
     this.item.td.currentStatus = [];
     counter = Math.floor(Math.random() * 3);
@@ -64,7 +70,7 @@ class ResetServices {
 
     this.item.td.hasFuncionality = [];
     counter = Math.floor(Math.random() * 3);
-    if (counter == 0) 
+    if (counter == 0)
       counter = 1;
     for (i = 0; i < counter; i++)
       this.item.td.hasFuncionality.push(this.funcionalities[Math.floor(Math.random() * this.funcionalities.length)]);
@@ -80,8 +86,8 @@ class ResetServices {
     counter = Math.floor(Math.random() * 3);
     if (counter == 0)
       counter = 1;
-    for (i = 0; i < counter; i++){
-      const bool = [true,false];
+    for (i = 0; i < counter; i++) {
+      const bool = [true, false];
       this.item.td.serviceFree.push(bool[Math.floor(Math.random() * bool.length)]);
     }
 
@@ -100,84 +106,98 @@ class ResetServices {
 
     this.item.td.versionOfService = this.versionOfService[Math.floor(Math.random() * this.versionOfService.length)];
 
-
-
-    console.log(this.item.td.serviceName);
-
+    console.log(this.item.td.serviceName, this.item.td.adapterId);
+    return this.item;
   }
 
-  async insertServices() {
-    const numServicesToInsert = 12;
-    let i = 0, fails = 0;
-    while (i < numServicesToInsert && fails < 20) {
-      this.randomService(i);
-      try {
-        await httpService.post(this.url + '/api/registration', this.item);
-        i++;
-      }
-      catch (err) {
-        fails++;
-        console.log('Fail on reset services: ', err.response.data.message, this.item);
-      }
-    }
-    console.log('Number of services created: ', i);
+  async insertOne() {
+    let OIDs = await httpService.get(`http://${host}:${port}/api/registration`);
+    if (OIDs.data == undefined || OIDs.data.message.length == 0)
+      this.insertServices(1);
   }
 
-  async resetServices() {
+  async insertOneRecursive(self, i, numServicesToInsert) {
+    setTimeout((function (self, i, numServicesToInsert) {
+      return function () {
+        try {
+          self.randomService(i);
+          httpService.post(self.url + '/api/registration', self.item);
+          console.log('Service created', i);
+          if (i < (numServicesToInsert - 1)) {
+            i++;
+            self.insertOneRecursive(self, i, numServicesToInsert);
+          }
+        }
+        catch (err) {
+          /*if (err.response != undefined && err.response.data != undefined && err.response.data.message != undefined)
+            console.log('Fail on reset services: ', err.response.data.message, self.item);
+          else*/
+          console.log('Fail on reset services: ', err);
+        }
+      };
+    })(this, i, numServicesToInsert), 10000);
+  }
+
+  async insertServices(numServicesToInsert) {
+    this.insertOneRecursive(this, 0, numServicesToInsert);
+  }
+
+  async resetServices(numServicesToInsert = 12) {
     console.log('Reset the services of our node');
     this.http = httpService;
     this.url = `http://${host}:${port}`;
     try {
       await this.deleteServices();
-      await this.insertServices();
+      await this.insertServices(numServicesToInsert);
     }
     catch (err) {
-      console.log('Fail on reset services: ', err.response.data.message);
+      if (err.response != undefined && err.response.data != undefined)
+        console.log('Fail on reset services: ', err.response.data.message);
+      else
+        console.log('Fail on reset services: ', err);
     }
   }
 
   constructor() {
     this.item = {
-      'td': {
+      td: {
         '@context': 'https://www.w3.org/2019/wot/td/v1',
-        'title': 'Monitor Service',
+        title: 'Monitor Service',
         '@type': 'Service',
-        'securityDefinitions': {
-          'nosec_sc': {
-            'scheme': 'nosec'
+        securityDefinitions: {
+          nosec_sc: {
+            scheme: 'nosec'
           }
         },
-        'security': 'nosec_sc',
-        'properties': {
-          'status': {
-            'type': 'string',
-            'forms': [{ 'href': 'https://mylamp.example.com/status' }]
+        security: 'nosec_sc',
+        properties: {
+          status: {
+            type: 'string',
+            forms: [{ href: 'https://mylamp.example.com/status' }]
           }
         },
-        'actions': {},
-        'events': {},
-        'adapterId': 'node-red-consume',
-        'oid': 'b0c2d27a-e3a1-45e2-89f2-901d3d78g26bc',
-
-
-        'serviceName': ['Service6', 'Tourism monitor'],
-        'serviceDescription': ['Count persons', 'Las personas recibidas en una hora'],
-        'provider': 'Bosonit',
-        'currentStatus': ['Active', 'Avaliable'],
-        'dateLastUpdate': new Date().toUTCString(),//'2021-11-09T18:25:43.511Z',
-        'hasDomain': ['Mobility'],
-        'hasSubDomain': ['Fly'],
-        'hasFuncionality': ['Only read', 'View in a lot of places'],
-        'hasRequirement': ['The date to read the persons'],
-        'serviceFree': [true, false],
-        'hasURL': 'http://rur.tourism.com/itisveryimportant/birds',
-        'language': ['spa', 'eng'],
-        'applicableGeographicalArea': 'Spain',
-        'numberOfDownloads': 129,
-        'versionOfService': '1.4',
-        'name':'nameOfService'
+        actions: {},
+        events: {},
+        adapterId: 'node-red-consume',
+        //'oid': 'b0c2d27a-e3a1-45e2-89f2-901d3d78g26bc',
+        serviceName: ['Service6', 'Tourism monitor'],
+        serviceDescription: ['Count persons', 'Las personas recibidas en una hora'],
+        provider: 'Bosonit',
+        currentStatus: ['Active', 'Avaliable'],
+        dateLastUpdate: new Date().toUTCString(),//'2021-11-09T18:25:43.511Z',
+        hasDomain: ['Mobility'],
+        hasSubDomain: ['Fly'],
+        hasFuncionality: ['Only read', 'View in a lot of places'],
+        hasRequirement: ['The date to read the persons'],
+        serviceFree: [true, false],
+        hasURL: 'http://rur.tourism.com/itisveryimportant/birds',
+        language: ['spa', 'eng'],
+        applicableGeographicalArea: 'Spain',
+        numberOfDownloads: 129,
+        versionOfService: '1.4',
+        name: 'nameOfService'
       },
-      'avatar': 'nostrud sunt'
+      //avatar': 'nostrud sunt'
     };
     this.adapterId = this.item.td.adapterId;
     this.title = this.item.td.title;
@@ -207,10 +227,14 @@ class ResetServices {
     let date2 = new Date();
     let date3 = new Date();
     let date4 = new Date();
-    date1.setDate(this.returnPositive(day - 1));
+    /*date1.setDate(this.returnPositive(day - 1));
     date2.setDate(this.returnPositive(day - 2));
     date3.setDate(this.returnPositive(day - 3));
-    date4.setDate(this.returnPositive(day - 4));
+    date4.setDate(this.returnPositive(day - 4));*/
+    date1.setDate(date1.getDate() - 1);
+    date2.setDate(date2.getDate() - 2);
+    date3.setDate(date3.getDate() - 3);
+    date4.setDate(date4.getDate() - 4);
     this.dates = [date.toUTCString(), date1.toUTCString(), date2.toUTCString(), date3.toUTCString(), date4.toUTCString(),];
     this.domains = [{ domain: 'Tourism', subdomain: ['Movility', 'Beach', 'Mountain'] },
     { domain: 'Energy', subdomain: ['Solar', 'Air', 'Ocean'] },

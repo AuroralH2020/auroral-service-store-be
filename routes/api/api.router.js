@@ -25,6 +25,9 @@ if (isMultitenantEnabled) routerConfig.controllers.unshift(tenantsController);
 
 if(preloadData)
   resetServices.resetServices();
+//else
+  //resetServices.insertOne();
+
 
 const router = createRouter(routerConfig);
 router.use('',recallsController.router); 
