@@ -46,9 +46,9 @@ async function executePromises(promises, data, isIdService = false, isDataServic
   }
   else if (isDataService) {
     const namesKeysArrays = ['serviceName', 'serviceDescription', 'currentStatus', 'hasDomain',
-      'hasSubDomain', 'hasFuncionality', 'hasRequirement', 'serviceFree', 'language'];
+      'hasSubDomain', 'hasFuncionality', 'hasRequirement', 'serviceFree', 'language', 'versionOfService'];
     const namesKeys = ['provider', 'dateLastUpdate', 'hasURL', 'applicableGeographicalArea',
-      'numberOfDownloads', 'versionOfService'];
+      'numberOfDownloads'];
     dataPromise.forEach((element) => {
       if (element.data != undefined)
         if (element.data.message != undefined)
@@ -99,6 +99,11 @@ function arraysToArrays(services) {
       service.serviceName = [''];
     if (typeof service.serviceName === 'string' || service.serviceName instanceof String)
       service.serviceName = [service.serviceName];
+
+    if (service.versionOfService === undefined)
+      service.versionOfService = [''];
+    if (typeof service.versionOfService === 'string' || service.versionOfService instanceof String)
+      service.versionOfService = [service.versionOfService];      
 
     if (service.serviceDescription === undefined)
       service.serviceDescription = [''];
@@ -222,7 +227,7 @@ async function insert_services_ids(nodesIds, allData, services, callsAtSameTime)
       const body = 'PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>' +
         ' PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> ' +
         ' SELECT * WHERE { ' +
-        ' GRAPH $g { ' +
+        ' GRAPH ?g { ' +
         ' ?sub <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <https://www.w3.org/2019/wot/td#Service> . ' +
         '}} '; // the body may change
       const config = { headers: { 'Content-Type': 'text/plain' }, timeout: 3000 };
@@ -254,8 +259,8 @@ async function insert_services_sparql(servicesAll, services, callsAtSameTime) {
     let id = services[i].agid;
     const body = 'PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>' +
       'PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> ' +
-      'SELECT * WHERE { GRAPH $g { ?sub ?pred ?obj . ' +
-      '} FILTER ( $g IN (<graph:' + id + '> ))}'; // the body may change
+      'SELECT * WHERE { GRAPH ?g { ?sub ?pred ?obj . ' +
+      '} FILTER ( ?g IN (<graph:' + id + '> ))}'; // the body may change
     const config = { headers: { 'Content-Type': 'text/plain' } };
     if (services[i].parameter != idMyNode || OIDs.data.message.includes(id)) {
       // only services out of the node an in the node AND VALID

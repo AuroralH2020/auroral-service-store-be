@@ -29,9 +29,9 @@ class ResetServices {
     let salt = (Math.random() + 1).toString(36).substring(9).toString();
     for (let i = 0; i < (Math.random() * 20 + 1); i++)
       salt += (Math.random() + 1).toString(36).substring(9).toString();
-    this.item.td.adapterId = this.adapterId + i.toString() + '--' + salt;
-    this.item.td.title = this.title + i.toString() + salt;
-    this.item.td.name = this.name + i.toString() + salt;
+    this.item.td.adapterId = this.adapterId + i.toString() + salt;
+    this.item.td.title = this.title + i.toString();
+    this.item.td.name = this.name + i.toString();
 
     this.item.td.serviceName = this.names[Math.floor(Math.random() * this.names.length)];
 
@@ -104,7 +104,13 @@ class ResetServices {
 
     this.item.td.numberOfDownloads = Math.floor(Math.random() * 1000);
 
-    this.item.td.versionOfService = this.versionOfService[Math.floor(Math.random() * this.versionOfService.length)];
+    counter = Math.floor(Math.random() * 3);
+    this.item.td.versionOfService = [];
+    if (counter < 2)
+      counter = 2;
+    for (i = 0; i < counter; i++)
+      this.item.td.versionOfService.push(this.versionOfService[Math.floor(Math.random() * this.versionOfService.length)]);
+    console.log(this.item.td.versionOfService);
 
     console.log(this.item.td.serviceName, this.item.td.adapterId);
     return this.item;
@@ -194,7 +200,7 @@ class ResetServices {
         language: ['spa', 'eng'],
         applicableGeographicalArea: 'Spain',
         numberOfDownloads: 129,
-        versionOfService: '1.4',
+        versionOfService: ['1.4'],
         name: 'nameOfService'
       },
       //avatar': 'nostrud sunt'
