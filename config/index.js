@@ -38,6 +38,7 @@ const config = {
     defaultLocale: process.env.DEFAULT_LOCALE
   },
   actionsService: {
+    show_internal: setBoolean(process.env.SHOW_INTERNAL_SERVICES, false),
     host: process.env.ACTIONS_SERVICE_HOST,
     port: process.env.ACTIONS_SERVICE_PORT
   }
