@@ -6,229 +6,6 @@ const httpService = require('@shared/services/http.service');
 const { host, port, show_internal } = require('@config').actionsService;
 const languages = require('./languages');
 
-
-/*
-async function executePromises(promises, data, isIdService = false, isDataService = false) {
-  let dataPromise = [];
-  let ret = promises.length;
-  await Promise.allSettled(promises)
-    .then(results => {
-      results.forEach((result) => {
-        let parameter = '';
-        if (result.status == 'fulfilled') {
-          let index = result.value.config.url.lastIndexOf('/');
-          parameter = result.value.config.url.substring(index + 1);
-          if (parameter != '')
-            result.value.data.message.parameter = parameter;
-          dataPromise.push(result.value);
-          console.log('Success');
-        }
-        else if (result.status == 'rejected') {
-          console.log('Error in promise: ', result.reason.toString(), ' path:', result.reason.request.path);
-        }
-      });
-    });
-  if (!isIdService && !isDataService)
-    dataPromise.forEach((element) => { data.push(element.data.message); });
-  else if (!isDataService) {
-    dataPromise.forEach((element) => {
-      if (element.data != undefined)
-        if (element.data.message != undefined && element.data.message.parameter != undefined)
-          if (element.data.message.results != undefined)
-            if (element.data.message.results.bindings != undefined)
-              element.data.message.results.bindings.forEach((subElement) => {
-                if (subElement.g != undefined && subElement.g.value != undefined && subElement.g.value.length > 7) {
-                  let data2 = {};
-                  data2.agid = subElement.g.value.toString().substring(6);
-                  data2.parameter = element.data.message.parameter;
-                  data.push(data2);
-                }
-              });
-    });
-  }
-  else if (isDataService) {
-    const namesKeysArrays = ['serviceName', 'serviceDescription', 'currentStatus', 'hasDomain',
-      'hasSubDomain', 'hasFuncionality', 'hasRequirement', 'serviceFree', 'language', 'versionOfService'];
-    const namesKeys = ['provider', 'dateLastUpdate', 'hasURL', 'applicableGeographicalArea',
-      'numberOfDownloads'];
-    dataPromise.forEach((element) => {
-      if (element.data != undefined)
-        if (element.data.message != undefined)
-          if (element.data.message.results != undefined)
-            if (element.data.message.results.bindings != undefined) {
-              let data2 = {};
-              element.data.message.results.bindings.forEach((subElement) => {
-                if (subElement.pred != undefined && subElement.pred.value != undefined) {
-                  let index = subElement.pred.value.indexOf('#');
-                  if (index >= 0 && subElement.obj != undefined && subElement.obj.value) {
-                    let key = subElement.pred.value.substring(index + 1);
-                    if (namesKeysArrays.includes(key)) {
-                      if (data2[key] == undefined)
-                        data2[key] = [subElement.obj.value];
-                      else
-                        data2[key].push(subElement.obj.value);
-                    }
-                    else if (namesKeys.includes(key)) {
-                      data2[key] = subElement.obj.value;
-                    }
-                  }
-                }
-              });
-              if (data != {})
-                data.push(data2);
-            }
-    });
-  }
-  promises.splice(0, promises.length);
-  return ret;
-}
-
-
-
-function insert_nodes_data(allData, nodesIds) {
-  allData.forEach(data => {
-    data.nodes = [];
-    let find = false;
-    for (let i = 0; i < nodesIds.length && !find; i++) {
-      if (data.commId == nodesIds[i].parameter) {
-        delete nodesIds[i].parameter;
-        find = true;
-        data.nodes = nodesIds[i];
-      }
-    }
-  });
-}
-
-function insert_services_data(allData, services) {
-  allData.forEach(data => {
-    for (let iData = 0; iData < data.nodes.length; iData++) {
-      data.nodes[iData].services = [];
-      for (let iServices = 0; iServices < services.length; iServices++) {
-        if (services[iServices].parameter == data.nodes[iData].agid) {
-          data.nodes[iData].services.push(services[iServices]);
-        }
-      }
-    }
-  });
-}
-
-function insert_all_in_services_data(allData, allServices) {
-  allServices.forEach(service => {
-    let find = false;
-    for (let i = 0; i < allData.length && !find; i++) {
-      for (let i2 = 0; i2 < allData[i].nodes.length && !find; i2++) {
-        for (let i3 = 0; i3 < allData[i].nodes[i2].services.length && !find; i3++) {
-          if (allData[i].nodes[i2].services[i3].agid == service.id) {
-            find = true;
-            service.community = { description: allData[i].description, name: allData[i].name, commId: allData[i].commId };
-            service.node = { company: allData[i].nodes[i2].company, cid: allData[i].nodes[i2].cid, agid: allData[i].nodes[i2].agid };
-          }
-        }
-      }
-    }
-  });
-}
-
-async function insert_communities_nodes(allData, nodesIds, callsAtSameTime) {
-  let communitiesIds = [], promises = [], totalCalls = 0;
-  communitiesIds = await httpService.get(`http://${host}:${port}/api/collaboration/communities`);
-  communitiesIds.data.message.forEach(community => {
-    allData.push(community);
-  });
-  //allData = communitiesIds.data.message;
-  //communitiesIds = communitiesIds.data.result; // this may vary
-  communitiesIds = communitiesIds.data.message;
-  for (let i = 0; i < communitiesIds.length; i++) {
-    let id = communitiesIds[i].commId;
-    promises.push(httpService.get(`http://${host}:${port}/api/discovery/nodes/community/${id}`));
-    if (promises.length >= callsAtSameTime) {
-      totalCalls += await executePromises(promises, nodesIds);
-    }
-  }
-  totalCalls += await executePromises(promises, nodesIds);
-  insert_nodes_data(allData, nodesIds);
-  console.log('nodes', allData);
-  console.log('List of nodes:');
-  allData.forEach(data => {
-    data.nodes.forEach(node => {
-      console.log(node);
-    });
-  });
-  return totalCalls;
-}
-
-async function insert_services_ids(nodesIds, allData, services, callsAtSameTime) {
-  let totalCalls = 0, promises = [];
-  for (let i = 0; i < nodesIds.length; i++) {
-    for (let i2 = 0; i2 < nodesIds[i].length; i2++) {
-      const body = 'PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>' +
-        ' PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> ' +
-        ' SELECT * WHERE { ' +
-        ' GRAPH ?g { ' +
-        ' ?sub <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <https://www.w3.org/2019/wot/td#Service> . ' +
-        '}} '; // the body may change
-      const config = { headers: { 'Content-Type': 'text/plain' }, timeout: 3000 };
-      let id = nodesIds[i][i2].agid;
-      promises.push(httpService.post(`http://${host}:${port}/api/discovery/remote/semantic/${id}`, body, config));
-      if (promises.length >= callsAtSameTime) {
-        totalCalls += await executePromises(promises, services, true);
-      }
-    }
-  }
-  totalCalls += await executePromises(promises, services, true);
-  services = services.filter((item, index, self) => {
-    return self.indexOf(self.find(e => e.agid == item.agid)) == index;
-  });
-  insert_services_data(allData, services);
-  return totalCalls;
-}
-
-async function insert_services_sparql(servicesAll, services, callsAtSameTime) {
-  let promises = [], totalCalls = 0;
-  let OIDs = await httpService.get(`http://${host}:${port}/api/registration`);
-  let idMyNode = ''; // necesitamos una forma mejor de sacar la id del nodo
-  for (let i = 0; i < services.length && idMyNode == ''; i++) {
-    if (OIDs.data.message.includes(services[i].agid)) {
-      idMyNode = services[i].parameter;
-    }
-  }
-  for (let i = 0; i < services.length; i++) {
-    let id = services[i].agid;
-    const body = 'PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>' +
-      'PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> ' +
-      'SELECT * WHERE { GRAPH ?g { ?sub ?pred ?obj . ' +
-      '} FILTER ( ?g IN (<graph:' + id + '> ))}'; // the body may change
-    const config = { headers: { 'Content-Type': 'text/plain' } };
-    if (show_internal || services[i].parameter !== idMyNode) {
-      id = services[i].parameter;
-      promises.push(httpService.post(`http://${host}:${port}/api/discovery/remote/semantic/${id}`, body, config));
-    }
-    if (promises.length >= callsAtSameTime) {
-      totalCalls += await executePromises(promises, servicesAll, false, true);
-    }
-  }
-  totalCalls += await executePromises(promises, servicesAll, false, true);
-  return totalCalls;
-}
-*/
-
-/*
-async function insert_services(servicesAll, services, callsAtSameTime) {
-  let promises = [], totalCalls = 0;
-  for (let i = 0; i < services.length; i++) {
-    let id = services[i].agid;
-    let id2 = '87c00849-2452-48ec-aa98-c3a62e3556d8';
-    //id2 = 'ad813ae2-3c04-4639-9cdd-34cb1557b9b9';
-    promises.push(httpService.get(`http://${host}:${port}/api/discovery/remote/td/${id}/${id2}`));
-    if (promises.length >= callsAtSameTime) {
-      totalCalls += await executePromises(promises, servicesAll);
-    }
-  }
-  totalCalls += await executePromises(promises, servicesAll);
-  return totalCalls;
-}
-*/
-
 function parseLanguages(services) {
   services.map(service => {
     service.language = service.language.map(lan => {
@@ -299,6 +76,7 @@ function arraysToArrays(services) {
 async function executePromisesDoAll(promises, data) {
   let dataPromise = [];
   const ret = promises.length;
+  let numSuccess = 0;
   await Promise.allSettled(promises).then(results => {
     results.forEach((result) => {
       let parameter = '';
@@ -309,6 +87,7 @@ async function executePromisesDoAll(promises, data) {
           result.value.data.message.parameter = parameter;
         dataPromise.push(result.value);
         console.log('Success');
+        numSuccess++;
       }
       else if (result.status == 'rejected') {
         console.log('Error in promise: ', result.reason.toString(), ' path:', result.reason.request.path);
@@ -354,8 +133,12 @@ async function executePromisesDoAll(promises, data) {
           }
   });
   promises.splice(0, promises.length);
-  return ret;
+  if (numSuccess > 0)
+    return ret;
+  else return 0;
 }
+
+let myCache = undefined;
 
 async function servicesDoAll(allData, servicesAll, callsAtSameTime) {
   // do all the work
@@ -380,13 +163,24 @@ async function servicesDoAll(allData, servicesAll, callsAtSameTime) {
     }
   }
   totalCalls += await executePromisesDoAll(promises, servicesAll);
-  //insert_nodes_data(allData, servicesAll);
+  arraysToArrays(servicesAll); // parse data
+  parseLanguages(servicesAll); // parse data language
+  if (totalCalls > 0) {
+    if (myCache == undefined) {   
+      console.log('Cache loaded');
+    }
+    myCache = [ ...servicesAll ];
+  }
+  //console.log('servicios en la cache',myCache);
   return totalCalls;
-
-
 }
 
-
+// load data to cache, at start and at intervals
+servicesDoAll([], [], 100); // read the services to cache at start
+setInterval(async function () {
+  await servicesDoAll([], [], 100);
+  console.log('Services reloaded to cache, number of services: ',myCache.length);
+}, 600000);
 
 
 class CallsService {
@@ -396,10 +190,6 @@ class CallsService {
     this.url = `http://${host}:${port}`;
     this.router = router;
     this.callsAtSameTime = 100;
-    /*this.router.use(function timeLog(req, res, next) {
-      console.log('Time: ', Date.now());
-      next();
-    });*/
 
     this.router.get('/services', async function (req, res) {
       try {
@@ -407,36 +197,24 @@ class CallsService {
         const callsAtSameTime = 100;
         let totalCalls = 1;
         const beginTime = Date.now();
-        let services = [], nodesIds = [];                
-        /*totalCalls += await insert_communities_nodes(allData, nodesIds, callsAtSameTime);
-        totalCalls += await insert_services_ids(nodesIds, allData, services, callsAtSameTime);
-        totalCalls += await insert_services_sparql(servicesAll, services, callsAtSameTime);
-        arraysToArrays(servicesAll); // parse data
-        parseLanguages(servicesAll); // parse data language
-        insert_all_in_services_data(allData, servicesAll); // parse data
-        for (let i = 0; i < 1 && i < servicesAll.length; i++) {
-          console.log('servicio', servicesAll[i]);
-        }
-        allData.forEach(community => {
-          console.log(community);
-          let counter = 0;
-          community.nodes.forEach(node => {
-            if (counter < 10) {
-              console.log('Node: ', node);
-              counter++;
-            }
-          });
-        });
-        console.log('Llamadas realizadas en total: ', totalCalls);
-        */
         servicesAll = [];
         allData = [];
-        totalCalls += await servicesDoAll(allData, servicesAll, callsAtSameTime);
-        arraysToArrays(servicesAll); // parse data
-        parseLanguages(servicesAll); // parse data language
+
+        if (req.query.cache != 'true') {
+          totalCalls += await servicesDoAll(allData, servicesAll, callsAtSameTime);
+          if(totalCalls == 1) // if all calls fail return cache
+            servicesAll = myCache; 
+          console.log('services of call');
+        }
+        else {
+          servicesAll = myCache;
+          console.log('services of cache');
+        }
+        console.log(req.params, req.query);
         console.log('Number of calls: ', totalCalls);
         console.log('Services send: ', servicesAll);
-        console.log('Time: ', (Date.now() - beginTime)/1000, ' seconds' );
+        console.log('Time: ', (Date.now() - beginTime) / 1000, ' seconds');
+
         res.send({ result: servicesAll });
       }
       catch (e) {
@@ -445,9 +223,6 @@ class CallsService {
       }
     });
   }
-
-
-
 }
 
 module.exports = new CallsService();
