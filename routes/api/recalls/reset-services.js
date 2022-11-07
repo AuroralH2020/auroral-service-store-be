@@ -33,14 +33,13 @@ class ResetServices {
     this.item.td.title = this.title + i.toString();
     this.item.td.name = this.name + i.toString();
 
-    this.item.td.serviceName = this.names[Math.floor(Math.random() * this.names.length)];
+    this.item.td.title = this.names[Math.floor(Math.random() * this.names.length)][0];
+    //this.item.td.serviceName = this.names[Math.floor(Math.random() * this.names.length)];
 
-    this.item.td.serviceDescription = [];
     counter = Math.floor(Math.random() * 3);
     if (counter == 0)
       counter = 1;
-    for (i = 0; i < counter; i++)
-      this.item.td.serviceDescription.push(this.descriptions[Math.floor(Math.random() * this.descriptions.length)]);
+    this.item.td.description = this.descriptions[Math.floor(Math.random() * this.descriptions.length)];
     this.item.td.provider = this.providers[Math.floor(Math.random() * this.providers.length)];
 
 
@@ -52,7 +51,7 @@ class ResetServices {
     for (i = 0; i < counter; i++)
       this.item.td.currentStatus.push(this.currentStatus[Math.floor(Math.random() * this.currentStatus.length)]);
 
-    this.item.td.dateLastUpdate = this.dates[Math.floor(Math.random() * this.dates.length)];
+    this.item.td.modified = new Date(this.dates[Math.floor(Math.random() * this.dates.length)]);
 
     this.item.td.hasDomain = [];
     this.item.td.hasSubDomain = [];
@@ -91,7 +90,7 @@ class ResetServices {
       this.item.td.serviceFree.push(bool[Math.floor(Math.random() * bool.length)]);
     }
 
-    this.item.td.hasURL = this.URLs[Math.floor(Math.random() * this.URLs.length)];
+    this.item.td.link = JSON.stringify({ href: this.URLs[Math.floor(Math.random() * this.URLs.length)] });
 
     this.item.td.language = [];
     counter = Math.floor(Math.random() * 3);
@@ -112,7 +111,7 @@ class ResetServices {
       this.item.td.versionOfService.push(this.versionOfService[Math.floor(Math.random() * this.versionOfService.length)]);
     console.log(this.item.td.versionOfService);
 
-    console.log(this.item.td.serviceName, this.item.td.adapterId);
+    console.log(this.item.td.title, this.item.td.adapterId);
     return this.item;
   }
 
@@ -186,17 +185,18 @@ class ResetServices {
         events: {},
         adapterId: 'node-red-consume',
         //'oid': 'b0c2d27a-e3a1-45e2-89f2-901d3d78g26bc',
-        serviceName: ['Service6', 'Tourism monitor'],
-        serviceDescription: ['Count persons', 'Las personas recibidas en una hora'],
+        //serviceName: ['Service6', 'Tourism monitor'],
+        description: 'Count persons',
         provider: 'Bosonit',
         currentStatus: ['Active', 'Avaliable'],
-        dateLastUpdate: new Date().toUTCString(),//'2021-11-09T18:25:43.511Z',
+        modified: new Date().toUTCString(),//'2021-11-09T18:25:43.511Z',
         hasDomain: ['Mobility'],
         hasSubDomain: ['Fly'],
         hasFuncionality: ['Only read', 'View in a lot of places'],
         hasRequirement: ['The date to read the persons'],
         serviceFree: [true, false],
-        hasURL: 'http://rur.tourism.com/itisveryimportant/birds',
+        //hasURL: 'http://rur.tourism.com/itisveryimportant/birds',
+        link: { href: 'http://rur.tourism.com/itisveryimportant/birds' },
         language: ['spa', 'eng'],
         applicableGeographicalArea: 'Spain',
         numberOfDownloads: 129,
@@ -210,7 +210,7 @@ class ResetServices {
     this.name = this.item.td.name;
 
 
-    this.names = [['Monitor service1', 'Counter of persons'],
+    this.names = [['Service counter of cows', 'Counter of persons', 'Service for eat of cows'],
     ['Monitor service2'],
     ['Service counter of birds'],
     ['Counter of rain']
@@ -244,7 +244,8 @@ class ResetServices {
     this.dates = [date.toUTCString(), date1.toUTCString(), date2.toUTCString(), date3.toUTCString(), date4.toUTCString(),];
     this.domains = [{ domain: 'Tourism', subdomain: ['Movility', 'Beach', 'Mountain'] },
     { domain: 'Energy', subdomain: ['Solar', 'Air', 'Ocean'] },
-    { domain: 'Farm', subdomain: ['Cow', 'Bird', 'Cat'] },
+    { domain: 'Mobility', subdomain: ['Cow', 'Bird', 'Cat'] },
+    { domain: 'Dairy farming & cycling economy', subdomain: ['Cow', 'Bird', 'Cat'] },
     { domain: 'Health', subdomain: ['Hospital', 'Temperature', 'Pharmacy'] }];
     this.funcionalities = ['Data analysis', 'Maps/Geolocation', 'Decision support',
       'Information about local touristic services, products, offers, weather information, navigation, real-time available ' +

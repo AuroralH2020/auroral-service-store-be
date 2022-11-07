@@ -20,10 +20,23 @@ function parseLanguages(services) {
 
 function arraysToArrays(services) {
   services.forEach(service => {
+
+    if(service.modified)
+      service.dateLastUpdate = new Date(service.modified);
+
+    if(service.link ){
+      if(service.link.href == undefined)
+        service.link = JSON.parse(service.link);
+      service.hasURL = service.link.href;
+    }
+
     if (service.serviceName === undefined)
       service.serviceName = [''];
     if (typeof service.serviceName === 'string' || service.serviceName instanceof String)
       service.serviceName = [service.serviceName];
+    if(service.title != undefined){
+      service.serviceName = [service.title];
+    }
 
     if (service.versionOfService === undefined)
       service.versionOfService = [''];
@@ -34,6 +47,10 @@ function arraysToArrays(services) {
       service.serviceDescription = [''];
     if (typeof service.serviceDescription === 'string' || service.serviceDescription instanceof String)
       service.serviceDescription = [service.serviceDescription];
+    if(service.description != undefined){
+      service.serviceDescription = [service.description];
+      console.log('descripcion',service);
+    }
 
     if (service.currentStatus === undefined)
       service.currentStatus = [''];
@@ -97,7 +114,7 @@ async function executePromisesDoAll(promises, data) {
   const namesKeysArrays = ['serviceName', 'serviceDescription', 'currentStatus', 'hasDomain',
     'hasSubDomain', 'hasFuncionality', 'hasRequirement', 'serviceFree', 'language', 'versionOfService'];
   const namesKeys = ['provider', 'dateLastUpdate', 'hasURL', 'applicableGeographicalArea',
-    'numberOfDownloads'];
+    'numberOfDownloads','title','description','link','modified'];
   let OIDs = await httpService.get(`http://${host}:${port}/api/registration`);
   dataPromise.forEach((element) => {
     if (element.data != undefined)
