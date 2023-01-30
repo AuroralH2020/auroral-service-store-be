@@ -1,15 +1,15 @@
 'use strict';
 
-var express = require('express');
-var router = express.Router();
+const express = require('express');
+const router = express.Router();
 const httpService = require('@shared/services/http.service');
 const { host, port, show_internal } = require('@config').actionsService;
-const languages = require('./languages');
+const languages = require('./languages.json');
 
 function parseLanguages(services) {
   services.map(service => {
     service.language = service.language.map(lan => {
-      const parsedLanguage = languages.getRArray().filter(language => language.Id == lan);
+      const parsedLanguage = languages.filter(language => language.Id == lan);
       if (parsedLanguage != undefined && parsedLanguage.length > 0)
         lan = parsedLanguage[0].Print_Name;
       return lan;
@@ -18,75 +18,45 @@ function parseLanguages(services) {
   });
 }
 
+function arrayToArray(value){
+  if(value == undefined)
+    value = [''];
+  if (typeof value === 'string' || value instanceof String)
+    value = [value];
+  return value;
+}
+
 function arraysToArrays(services) {
   services.forEach(service => {
 
-    if(service.modified)
+    if (service.modified)
       service.dateLastUpdate = new Date(service.modified);
 
-    if(service.link ){
-      if(service.link.href == undefined)
+    if (service.link) {
+      if (service.link.href == undefined)
         service.link = JSON.parse(service.link);
       service.hasURL = service.link.href;
     }
 
-    if (service.serviceName === undefined)
-      service.serviceName = [''];
-    if (typeof service.serviceName === 'string' || service.serviceName instanceof String)
-      service.serviceName = [service.serviceName];
-    if(service.title != undefined){
+    if (service.title != undefined) {
       service.serviceName = [service.title];
     }
 
-    if (service.versionOfService === undefined)
-      service.versionOfService = [''];
-    if (typeof service.versionOfService === 'string' || service.versionOfService instanceof String)
-      service.versionOfService = [service.versionOfService];
+    service.name = arrayToArray(service.name);
+    service.versionOfService = arrayToArray(service.versionOfService);
+    service.serviceDescription = arrayToArray(service.serviceDescription);  
 
-    if (service.serviceDescription === undefined)
-      service.serviceDescription = [''];
-    if (typeof service.serviceDescription === 'string' || service.serviceDescription instanceof String)
-      service.serviceDescription = [service.serviceDescription];
-    if(service.description != undefined){
+    if (service.description != undefined) {
       service.serviceDescription = [service.description];
-      console.log('descripcion',service);
     }
 
-    if (service.currentStatus === undefined)
-      service.currentStatus = [''];
-    if (typeof service.currentStatus === 'string' || service.currentStatus instanceof String)
-      service.currentStatus = [service.currentStatus];
-
-    if (service.hasDomain === undefined)
-      service.hasDomain = [''];
-    if (typeof service.hasDomain === 'string' || service.hasDomain instanceof String)
-      service.hasDomain = [service.hasDomain];
-
-    if (service.hasSubDomain === undefined)
-      service.hasSubDomain = [''];
-    if (typeof service.hasSubDomain === 'string' || service.hasSubDomain instanceof String)
-      service.hasSubDomain = [service.hasSubDomain];
-
-    if (service.hasFuncionality === undefined)
-      service.hasFuncionality = [''];
-    if (typeof service.hasFuncionality === 'string' || service.hasFuncionality instanceof String)
-      service.hasFuncionality = [service.hasFuncionality];
-
-    if (service.hasRequirement === undefined)
-      service.hasRequirement = [''];
-    if (typeof service.hasRequirement === 'string' || service.hasRequirement instanceof String)
-      service.hasRequirement = [service.hasRequirement];
-
-    if (service.serviceFree === undefined)
-      service.serviceFree = [false];
-    if (typeof service.serviceFree === 'boolean' || service.serviceFree instanceof Boolean)
-      service.serviceFree = [service.serviceFree];
-
-    if (service.language === undefined)
-      service.language = [''];
-    if (typeof service.language === 'string' || service.language instanceof String)
-      service.language = [service.language];
-
+    service.currentStatus = arrayToArray(service.currentStatus);
+    service.hasDomain = arrayToArray(service.hasDomain);
+    service.hasSubDomain = arrayToArray(service.hasSubDomain);
+    service.hasFuncionality = arrayToArray(service.hasFuncionality);
+    service.hasRequirement = arrayToArray(service.hasRequirement);
+    service.serviceFree = arrayToArray(service.serviceFree);
+    service.language = arrayToArray(service.language);
   });
 }
 
@@ -114,7 +84,7 @@ async function executePromisesDoAll(promises, data) {
   const namesKeysArrays = ['serviceName', 'serviceDescription', 'currentStatus', 'hasDomain',
     'hasSubDomain', 'hasFuncionality', 'hasRequirement', 'serviceFree', 'language', 'versionOfService'];
   const namesKeys = ['provider', 'dateLastUpdate', 'hasURL', 'applicableGeographicalArea',
-    'numberOfDownloads','title','description','link','modified'];
+    'numberOfDownloads', 'title', 'description', 'link', 'modified'];
   let OIDs = await httpService.get(`http://${host}:${port}/api/registration`);
   dataPromise.forEach((element) => {
     if (element.data != undefined)
@@ -166,15 +136,14 @@ async function servicesDoAll(allData, servicesAll, callsAtSameTime) {
   });
   console.log('Comunities: ', allData);
   communitiesIds = communitiesIds.data.message;
-  for (let i = 0; i < communitiesIds.length; i++) {
-    let id = communitiesIds[i].commId;
+  for (let communityId of communitiesIds) {
     const body = 'PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> ' +
       'PREFIX wot: <https://www.w3.org/2019/wot/td#> ' +
       'SELECT distinct ?p ?o ?sub WHERE {  ' +
       '?sub rdf:type wot:Service . ' +
       '?sub ?p ?o . } '; // the body may change
     const config = { headers: { 'Content-Type': 'text/plain' } };
-    promises.push(httpService.post(`http://${host}:${port}/api/discovery/remote/semantic/community/${id}`, body, config));
+    promises.push(httpService.post(`http://${host}:${port}/api/discovery/remote/semantic/community/${communityId.commId}`, body, config));
     if (promises.length >= callsAtSameTime) {
       totalCalls += await executePromisesDoAll(promises, servicesAll);
     }
@@ -183,12 +152,11 @@ async function servicesDoAll(allData, servicesAll, callsAtSameTime) {
   arraysToArrays(servicesAll); // parse data
   parseLanguages(servicesAll); // parse data language
   if (totalCalls > 0) {
-    if (myCache == undefined) {   
+    if (myCache == undefined) {
       console.log('Cache loaded');
     }
-    myCache = [ ...servicesAll ];
+    myCache = [...servicesAll];
   }
-  //console.log('servicios en la cache',myCache);
   return totalCalls;
 }
 
@@ -196,9 +164,8 @@ async function servicesDoAll(allData, servicesAll, callsAtSameTime) {
 servicesDoAll([], [], 100); // read the services to cache at start
 setInterval(async function () {
   await servicesDoAll([], [], 100);
-  console.log('Services reloaded to cache, number of services: ',myCache.length);
+  console.log('Services reloaded to cache, number of services: ', myCache.length);
 }, 600000);
-
 
 class CallsService {
 
@@ -219,8 +186,8 @@ class CallsService {
 
         if (req.query.cache != 'true') {
           totalCalls += await servicesDoAll(allData, servicesAll, callsAtSameTime);
-          if(totalCalls == 1) // if all calls fail return cache
-            servicesAll = myCache; 
+          if (totalCalls == 1) // if all calls fail return cache
+            servicesAll = myCache;
           console.log('services of call');
         }
         else {

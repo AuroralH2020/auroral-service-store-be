@@ -2,6 +2,7 @@
 
 const httpService = require('@shared/services/http.service');
 const { host, port } = require('@config').actionsService;
+const crypto = require('crypto');
 
 
 class ResetServices {
@@ -24,7 +25,10 @@ class ResetServices {
     }
   }
 
+  
+
   randomService(i) {
+    // crypto.getRandomValues()
     let counter = 0;
     let salt = (Math.random() + 1).toString(36).substring(9).toString();
     for (let i = 0; i < (Math.random() * 20 + 1); i++)
@@ -195,8 +199,8 @@ class ResetServices {
         hasFuncionality: ['Only read', 'View in a lot of places'],
         hasRequirement: ['The date to read the persons'],
         serviceFree: [true, false],
-        //hasURL: 'http://rur.tourism.com/itisveryimportant/birds',
-        link: { href: 'http://rur.tourism.com/itisveryimportant/birds' },
+        //hasURL: 'https://rur.tourism.com/itisveryimportant/birds',
+        link: { href: 'https://rur.tourism.com/itisveryimportant/birds' },
         language: ['spa', 'eng'],
         applicableGeographicalArea: 'Spain',
         numberOfDownloads: 129,
@@ -257,10 +261,10 @@ class ResetServices {
       'Creation of the personalized design with oHA Editor',
       'Editing of activities, attractions, bookings, or products and essential content to oHA Web-App via oHA Base',
       'Marketing and dissemination activities to oHA end-users, present oHA in region and pilot'];
-    this.URLs = ['http://www.spain.com/spain/service2',
-      'http://www.italy.com/italy/service2',
-      'http://www.france.com/france/service2',
-      'http://www.germany.com/germany/service2',
+    this.URLs = ['https://www.spain.com/spain/service2',
+      'https://www.italy.com/italy/service2',
+      'https://www.france.com/france/service2',
+      'https://www.germany.com/germany/service2',
     ];
     this.applicableGeographicalArea = ['Spain', 'France', 'Italy', 'German', 'Portugal'];
     this.languages = ['spa', 'eng', 'fra', 'deu', 'ita'];
