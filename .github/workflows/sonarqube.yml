@@ -56,6 +56,8 @@ jobs:
             # Unique key of your project. You can find it in SonarQube > [my project] > Project Information (top-right menu)
             # mandatory
             -Dsonar.projectKey=elliot-boilerplate-be
+            -Dsonar.login=${{ secrets.LOGIN }}
+            -Dsonar.password=${{ secrets.PASSWORD }}
             # Comma-separated paths to directories containing main source files.
             #-Dsonar.sources= # optional, default is project base directory
             # When you need the analysis to take place in a directory other than the one from which it was launched
