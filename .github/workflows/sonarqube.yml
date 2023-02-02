@@ -59,6 +59,7 @@ jobs:
             -Dsonar.login=${{ secrets.LOGIN }}
             -Dsonar.password=${{ secrets.PASSWORD }}
             -Dsonar.projectName=auroral-be
+            -Dsonar.projectBaseDir="repository-path"
             
             
             #-Dsonar.scm.provider=git
