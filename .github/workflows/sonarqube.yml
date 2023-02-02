@@ -58,9 +58,9 @@ jobs:
             -Dsonar.projectKey=elliot-boilerplate-be
             -Dsonar.login=${{ secrets.LOGIN }}
             -Dsonar.password=${{ secrets.PASSWORD }}
-            -Dsonar.inclusions=routes/**/*.ts
             -Dsonar.projectName=auroral-be
             -Dsonar.verbose=true
+            #-Dsonar.inclusions=routes/**/*.ts
             # optional, default is false
             #-Dsonar.scm.provider=git
             #-Dsonar.sources=/
