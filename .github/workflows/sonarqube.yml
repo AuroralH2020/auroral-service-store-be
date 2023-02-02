@@ -58,7 +58,7 @@ jobs:
             -Dsonar.projectKey=elliot-boilerplate-be
             -Dsonar.login=${{ secrets.LOGIN }}
             -Dsonar.password=${{ secrets.PASSWORD }}
-            -Dsonar.projectName=auroral-be
+            -Dsonar.projectBaseDir=$WORKSPACE/.
             -Dsonar.projectBaseDir=.
             -Dsonar.sources=.
             
