@@ -59,6 +59,7 @@ jobs:
             -Dsonar.login=${{ secrets.LOGIN }}
             -Dsonar.password=${{ secrets.PASSWORD }}
             -Dsonar.projectName=auroral-be
+            -Dsonar.scm.disabled=true
             -Dsonar.projectBaseDir=.
             
             
