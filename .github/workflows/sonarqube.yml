@@ -61,7 +61,7 @@ jobs:
             -Dsonar.projectName=auroral-be
             
             
-            -Dsonar.scm.provider=git
+            #-Dsonar.scm.provider=git
             # optional, default is false
             #-Dsonar.sources=routes/api
             #-Dsonar.inclusions=routes/**/*.ts
