@@ -59,7 +59,6 @@ jobs:
             -Dsonar.login=${{ secrets.LOGIN }}
             -Dsonar.password=${{ secrets.PASSWORD }}
             -Dsonar.projectBaseDir=$WORKSPACE/.
-            -Dsonar.projectBaseDir=.
             -Dsonar.sources=.
             
             -Dsonar.scm.provider=git
