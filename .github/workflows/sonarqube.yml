@@ -59,11 +59,10 @@ jobs:
             -Dsonar.login=${{ secrets.LOGIN }}
             -Dsonar.password=${{ secrets.PASSWORD }}
             -Dsonar.projectName=auroral-be
-            -Dsonar.scm.disabled=true
             -Dsonar.projectBaseDir=.
-            -Dsonar.sources=./routes
+            -Dsonar.sources=.
             
-            #-Dsonar.scm.provider=git
+            -Dsonar.scm.provider=git
             # optional, default is false
             #-Dsonar.sources=routes/api
             #-Dsonar.inclusions=routes/**/*.ts
