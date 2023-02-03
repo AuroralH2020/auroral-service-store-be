@@ -3,7 +3,7 @@
 # auroral-service-store-be
 AURORAL Service Store backend
 
-## ejecute
+## Ejecute
 
 To execute the services run `npm run dev`
 
