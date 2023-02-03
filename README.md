@@ -3,8 +3,9 @@
 # auroral-service-store-be
 AURORAL Service Store backend
 
+## ejecute
 
-This project was generated with [Angular CLI](https://github.com/angular/angular-cli) version 11.2.4.
+To execute the services run `npm run dev`
 
 ## Development server
 
