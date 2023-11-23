@@ -33,8 +33,14 @@ function arraysToArrays(services) {
       service.dateLastUpdate = new Date(service.modified);
 
     if (service.link) {
-      if (service.link.href == undefined)
-        service.link = JSON.parse(service.link);
+      if (service.link.href == undefined){
+        try{
+          service.link = JSON.parse(service.link);
+        }
+        catch(err){
+          console.log('service.link not is json', err);
+        }
+      }
       service.hasURL = service.link.href;
     }
 
@@ -84,7 +90,7 @@ async function executePromisesDoAll(promises, data) {
   const namesKeysArrays = ['serviceName', 'serviceDescription', 'currentStatus', 'hasDomain',
     'hasSubDomain', 'hasFuncionality', 'hasRequirement', 'serviceFree', 'language', 'versionOfService'];
   const namesKeys = ['provider', 'dateLastUpdate', 'hasURL', 'applicableGeographicalArea',
-    'numberOfDownloads', 'title', 'description', 'link', 'modified'];
+    'numberOfDownload', 'title', 'description', 'link', 'modified', 'ServiceType'];
   let OIDs = await httpService.get(`http://${host}:${port}/api/registration`);
   dataPromise.forEach((element) => {
     if (element.data != undefined)
